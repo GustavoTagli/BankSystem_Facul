@@ -30,10 +30,10 @@ export default function Cliente({
 
   return (
     <div className="text-zinc-50">
-      <h1 className="text-2xl absolute right-4 top-4">BankSystem</h1>
-      <div className="bg-emerald-800 p-4">
-        <h1 className="text-3xl">{`Olá, ${data?.nome}!`}</h1>
-      </div>
+      <header className="flex flex-col gap-2 bg-emerald-800 p-4">
+        <p className="text-md">BankSystem</p>
+        <h2 className="text-3xl">{`Olá, ${data?.nome}!`}</h2>
+      </header>
       <div className="flex flex-col gap-4 m-4">
         <h2 className="text-2xl">Contas ativas</h2>
         {contas?.map((conta) => (

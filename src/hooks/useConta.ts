@@ -13,15 +13,29 @@ export function useConta(id: string) {
     staleTime: 1000 * 60 * 5,
   })
 
+  const getContaByNumero = async (numero: number) => {
+    try {
+      const response = await axios.get(
+        `${API_URL}/contas/buscarContaPorNumero?numeroConta=${numero}`
+      )
+      return response.data
+    } catch (error) {
+      console.error("Erro ao buscar conta pelo número:", error)
+      throw error
+    }
+  }
+
   const transaction = async (
     id_conta_origem: number,
-    id_conta_destino: number,
+    numero_conta_destino: number,
     valor: number
   ) => {
     try {
+      const conta_destino = await getContaByNumero(numero_conta_destino)
+
       const response = await axios.post(`${API_URL}/transferencias`, {
         id_conta_origem,
-        id_conta_destino,
+        id_conta_destino: conta_destino.id,
         valor,
         data: new Date().toISOString(),
       })
