@@ -1,9 +1,18 @@
 import { useQuery, UseQueryResult } from "@tanstack/react-query"
 import { fetcher } from "../utils/fetcher"
 import { Cliente, Conta } from "../types"
+import axios from "axios"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL as string
 
 interface ClienteComContas extends Cliente {
   contas: Conta[]
+}
+
+interface ClienteInput {
+  nome: string
+  cpf: string
+  dataNascimento: string
 }
 
 export const useClienteComDadosCompletos = (
@@ -31,4 +40,13 @@ export const useClienteComDadosCompletos = (
       }
     },
   })
+}
+
+export const useCliente = () => {
+  const createCliente = async (cliente: ClienteInput) => {
+    const response = await axios.post(`${API_URL}/clientes`, cliente)
+    return response.data
+  }
+
+  return { createCliente }
 }

@@ -1,12 +1,33 @@
 "use client"
 
+import { useCliente } from "@/hooks/useCliente"
 import { useRouter } from "next/navigation"
 
 export default function Cadastro() {
   const router = useRouter()
+  const { createCliente } = useCliente()
 
-  const handleSubmit = () => {
-    router.push("/")
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    const form = e.currentTarget
+    const nome = (form[0] as HTMLInputElement).value
+    const cpf = (form[1] as HTMLInputElement).value
+    const dataNascimento = (form[2] as HTMLInputElement).value
+
+    if (!nome || !cpf || !dataNascimento) {
+      alert("Preencha todos os campos")
+      return
+    }
+
+    createCliente({ nome, cpf, dataNascimento })
+      .then(() => {
+        alert("Cliente cadastrado com sucesso!")
+        router.push("/")
+      })
+      .catch((error) => {
+        console.error("Erro ao cadastrar o cliente:", error)
+        alert("Erro ao cadastrar o cliente")
+      })
   }
 
   return (

@@ -20,7 +20,6 @@ export function useTransferencia() {
         id_conta_destino: conta_destino.id,
         valor,
       })
-      console.log(response.data)
       return response.data // Retorne os dados da resposta
     } catch (error) {
       // Trate o erro da maneira que preferir

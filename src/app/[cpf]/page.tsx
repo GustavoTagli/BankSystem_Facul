@@ -34,7 +34,15 @@ export default function Cliente({
         <h2 className="text-3xl">{`Olá, ${data?.nome}!`}</h2>
       </header>
       <div className="flex flex-col gap-4 m-4">
-        <h2 className="text-2xl">Contas ativas</h2>
+        {data?.contas.length === 0 ? (
+          <h2 className="text-2xl">Nenhuma conta ativa</h2>
+        ) : (
+          <h2 className="text-2xl">Contas ativas</h2>
+        )}
+
+        <button className="w-32 p-0 m-0 border-b-2 border-b-emerald-800 hover:border-b-emerald-500">
+          <a href={`/${cpf}/nova-conta`}>Abrir nova conta</a>
+        </button>
         {data?.contas.map((conta) => (
           <div
             key={conta.numeroConta}

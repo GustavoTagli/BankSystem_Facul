@@ -1,6 +1,9 @@
 import { useQuery, UseQueryResult } from "@tanstack/react-query"
 import { fetcher } from "../utils/fetcher"
-import { Conta, Transferencia } from "../types"
+import { Cliente, Conta, Transferencia } from "../types"
+import axios from "axios"
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL as string
 
 interface TransferenciaComContas extends Transferencia {
   numeroContaOrigem: string
@@ -70,4 +73,26 @@ export const useContaComTransferencias = (
       }
     },
   })
+}
+
+export const useConta = () => {
+  const createConta = async (
+    cpf: string,
+    numeroConta: string,
+    tipo: string
+  ) => {
+    const cliente = (
+      await fetcher<Cliente>(`/clientes/buscarClientePorCpf?cpf=${cpf}`)
+    ).data
+    const response = await axios.post(`${API_URL}/contas`, {
+      numeroConta,
+      tipo,
+      saldo: 0,
+      id_cliente: cliente.id,
+    })
+
+    return response.data
+  }
+
+  return { createConta }
 }
