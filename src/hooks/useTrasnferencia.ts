@@ -1,17 +1,33 @@
-import { TransferenciaModel } from "@/types/transferenciaModel"
+import { Conta } from "@/types"
 import { fetcher } from "@/utils/fetcher"
-import { useQuery } from "@tanstack/react-query"
+import axios from "axios"
 
-export function useTransferencia(id: number) {
-  const { data, refetch } = useQuery({
-    queryKey: ["transferencia", { id }],
-    queryFn: () =>
-      fetcher<TransferenciaModel[]>(
-        `/transferencias/buscarTransferenciasPorNumeroContaOrigem?numeroContaOrigem=${id}`
-      ),
-    enabled: !!id,
-    staleTime: 1000 * 60 * 5,
-  })
+const API_URL = process.env.NEXT_PUBLIC_API_URL as string
 
-  return { data: data?.data, refetch }
+export function useTransferencia() {
+  const doTransaction = async (
+    id_conta_origem: number,
+    numero_conta_destino: number,
+    valor: number
+  ) => {
+    try {
+      const conta_destino = await fetcher<Conta>(
+        `/contas/buscarContaPorNumero?numeroConta=${numero_conta_destino}`
+      ).then((response) => response.data)
+
+      const response = await axios.post(`${API_URL}/transferencias`, {
+        id_conta_origem,
+        id_conta_destino: conta_destino.id,
+        valor,
+      })
+      console.log(response.data)
+      return response.data // Retorne os dados da resposta
+    } catch (error) {
+      // Trate o erro da maneira que preferir
+      console.error("Erro ao realizar a transferência:", error)
+      throw error // Lança o erro para que possa ser tratado onde a função é chamada
+    }
+  }
+
+  return { doTransaction }
 }

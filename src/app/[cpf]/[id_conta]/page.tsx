@@ -1,26 +1,38 @@
 "use client"
 
-import { useClienteById } from "@/hooks/useCliente"
-import { useConta } from "@/hooks/useConta"
+import Loader from "@/components/loader"
+import { useClienteComDadosCompletos } from "@/hooks/useCliente"
+import { useContaComTransferencias } from "@/hooks/useConta"
 import { useTransferencia } from "@/hooks/useTrasnferencia"
+// import { useConta } from "@/hooks/useConta"
+// import { useTransferencia } from "@/hooks/useTrasnferencia"
 import formatCurrency from "@/utils/formatCurrency"
-import { useSearchParams } from "next/navigation"
-import { useState } from "react"
+import { use, useState } from "react"
 
-export default function Conta() {
-  const conta_id = useSearchParams().get("id_conta") || ""
-  const { data: conta, isLoading, refetch, transaction } = useConta(conta_id)
-  const { data } = useClienteById(conta?.id_cliente || 0)
-  const { data: transferencias, refetch: refetchTransferencias } =
-    useTransferencia(+conta_id || 0)
+export default function ContaPage({
+  params,
+}: {
+  params: Promise<{ cpf: string; id_conta: string }>
+}) {
+  const { cpf, id_conta } = use(params)
+  const { data: cliente } = useClienteComDadosCompletos(cpf)
+  const {
+    data: conta,
+    isLoading,
+    refetch,
+    isFetching,
+  } = useContaComTransferencias(+id_conta)
+  const { doTransaction } = useTransferencia()
   const [form, setForm] = useState({ conta: "", valor: "" })
 
-  if (!conta_id) {
-    return <p>Conta não encontrada</p>
-  }
+  // console.log(conta)
 
   if (isLoading) {
-    return <p>Carregando...</p>
+    return <Loader />
+  }
+
+  if (!conta) {
+    return <p>Conta não encontrada</p>
   }
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
@@ -34,10 +46,10 @@ export default function Conta() {
       return
     }
 
-    transaction(+conta_id, +conta, +valor)
+    doTransaction(+id_conta, +conta, +valor)
       .then(() => {
         refetch()
-        refetchTransferencias()
+        setForm({ conta: "", valor: "" })
         alert("Transferência realizada com sucesso!")
       })
       .catch((error) => {
@@ -48,9 +60,10 @@ export default function Conta() {
 
   return (
     <div className="text-zinc-50">
+      {isFetching && <Loader />}
       <header className="flex flex-col gap-2 bg-emerald-800 p-4">
         <p className="text-md">BankSystem</p>
-        <h2 className="text-3xl">{`Olá, ${data?.nome}!`}</h2>
+        <h2 className="text-3xl">{`Olá, ${cliente?.nome}!`}</h2>
       </header>
       <div className="flex flex-col gap-4 m-4">
         <h2 className="text-2xl">{`${conta?.numeroConta} - ${conta?.tipo}`}</h2>
@@ -95,24 +108,39 @@ export default function Conta() {
           Enviar
         </button>
       </form>
-
       <div>
         <p className="text-xl m-4">
           <strong>Histórico</strong>
         </p>
-        {transferencias
-          ?.sort((a, b) => +new Date(b.data) - +new Date(a.data))
-          .map((transferencia) => (
-            <div
-              key={transferencia.id}
-              className="bg-zinc-700 p-2 m-4 rounded-md flex justify-between"
-            >
-              <p>{`Transferência para a conta de ID ${
-                transferencia.id_conta_destino
-              } no valor de ${formatCurrency(transferencia.valor)}`}</p>
-              <p>{`Data: ${new Date(transferencia.data).toLocaleString()}`}</p>
-            </div>
-          ))}
+        {conta?.transferencias
+          .sort((a, b) => +new Date(b.data) - +new Date(a.data))
+          .map((transferencia) => {
+            if (transferencia.id_conta_origem === conta.id) {
+              return (
+                <div
+                  key={transferencia.id}
+                  className="bg-zinc-700 p-2 m-4 rounded-md flex justify-between gap-4"
+                >
+                  <p>{`Transferência eviada para a conta ${
+                    transferencia.numeroContaDestino
+                  } no valor de ${formatCurrency(transferencia.valor)}`}</p>
+                  <p>{`${new Date(transferencia.data).toLocaleString()}`}</p>
+                </div>
+              )
+            } else {
+              return (
+                <div
+                  key={transferencia.id}
+                  className="bg-zinc-700 p-2 m-4 rounded-md flex justify-between gap-4"
+                >
+                  <p>{`Transferência recebida da conta ${
+                    transferencia.numeroContaOrigem
+                  } no valor de ${formatCurrency(transferencia.valor)}`}</p>
+                  <p>{`${new Date(transferencia.data).toLocaleString()}`}</p>
+                </div>
+              )
+            }
+          })}
       </div>
     </div>
   )

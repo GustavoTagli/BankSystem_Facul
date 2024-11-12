@@ -1,26 +1,34 @@
-import { useQuery } from "@tanstack/react-query"
-import { fetcher } from "@/utils/fetcher"
-import { ClienteModel } from "@/types/clienteModel"
+import { useQuery, UseQueryResult } from "@tanstack/react-query"
+import { fetcher } from "../utils/fetcher"
+import { Cliente, Conta } from "../types"
 
-export function useClienteByCpf(cpf: string) {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["cliente", { cpf }],
-    queryFn: () =>
-      fetcher<ClienteModel>(`/clientes/buscarClientePorCpf?cpf=${cpf}`),
-    enabled: !!cpf,
-    staleTime: 1000 * 60 * 5,
-  })
-
-  return { data: data?.data, isLoading, refetchCliente: refetch }
+interface ClienteComContas extends Cliente {
+  contas: Conta[]
 }
 
-export function useClienteById(id: number) {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["cliente", { id }],
-    queryFn: () => fetcher<ClienteModel>(`/clientes/${id}`),
-    enabled: !!id,
-    staleTime: 1000 * 60 * 5,
-  })
+export const useClienteComDadosCompletos = (
+  clienteCpf: string
+): UseQueryResult<ClienteComContas> => {
+  return useQuery<ClienteComContas>({
+    queryKey: ["clienteComDadosCompletos", clienteCpf],
+    queryFn: async () => {
+      // 1. Buscar dados do cliente
+      const clienteResponse = await fetcher<Cliente>(
+        `/clientes/buscarClientePorCpf?cpf=${clienteCpf}`
+      )
+      const cliente = clienteResponse.data
 
-  return { data: data?.data, isLoading, refetchCliente: refetch }
+      // 2. Buscar as contas do cliente
+      const contasResponse = await fetcher<Conta[]>(
+        `/contas/buscarContasPorCpfCliente?cpf=${cliente.cpf}`
+      )
+      const contas = contasResponse.data
+
+      // 4. Retornar o cliente com as contas e transferências
+      return {
+        ...cliente,
+        contas,
+      }
+    },
+  })
 }

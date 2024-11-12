@@ -1,52 +1,73 @@
-import { useQuery } from "@tanstack/react-query"
-import { fetcher } from "@/utils/fetcher"
-import { ContaModel } from "@/types/contaModel"
-import axios from "axios"
+import { useQuery, UseQueryResult } from "@tanstack/react-query"
+import { fetcher } from "../utils/fetcher"
+import { Conta, Transferencia } from "../types"
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL as string
+interface TransferenciaComContas extends Transferencia {
+  numeroContaOrigem: string
+  numeroContaDestino: string
+}
 
-export function useConta(id: string) {
-  const { data, isLoading, refetch } = useQuery({
-    queryKey: ["conta", { id }],
-    queryFn: () => fetcher<ContaModel>(`/contas/${id}`),
-    enabled: !!id,
-    staleTime: 1000 * 60 * 5,
-  })
+interface ContaComTransferencias extends Conta {
+  transferencias: TransferenciaComContas[]
+}
 
-  const getContaByNumero = async (numero: number) => {
-    try {
-      const response = await axios.get(
-        `${API_URL}/contas/buscarContaPorNumero?numeroConta=${numero}`
+export const useContaComTransferencias = (
+  contaId: number
+): UseQueryResult<ContaComTransferencias> => {
+  return useQuery<ContaComTransferencias>({
+    queryKey: ["contaComTransferencias", contaId],
+    queryFn: async () => {
+      // 1. Buscar dados da conta
+      const contaResponse = await fetcher<Conta>(`/contas/${contaId}`)
+      const conta = contaResponse.data
+      // 2. Buscar transferências feitas pela conta (conta como origem)
+      const transferenciasFeitasResponse = await fetcher<Transferencia[]>(
+        `/transferencias/buscarTransferenciasPorNumeroContaOrigem?numeroContaOrigem=${conta.id}`
       )
-      return response.data
-    } catch (error) {
-      console.error("Erro ao buscar conta pelo número:", error)
-      throw error
-    }
-  }
+      const numeroContaOrigemEDestinoFeitas = await Promise.all(
+        transferenciasFeitasResponse.data.map(async (transferencia) => {
+          const contaDestinoResponse = await fetcher<Conta>(
+            `/contas/${transferencia.id_conta_destino}`
+          )
+          const contaDestino = contaDestinoResponse.data
+          return {
+            ...transferencia,
+            numeroContaDestino: contaDestino.numeroConta,
+            numeroContaOrigem: conta.numeroConta,
+          }
+        })
+      )
 
-  const transaction = async (
-    id_conta_origem: number,
-    numero_conta_destino: number,
-    valor: number
-  ) => {
-    try {
-      const conta_destino = await getContaByNumero(numero_conta_destino)
+      // 3. Buscar transferências recebidas pela conta (conta como destino)
+      const transferenciasRecebidasResponse = await fetcher<Transferencia[]>(
+        `/transferencias/buscarTransferenciasPorNumeroContaDestino?numeroContaDestino=${conta.id}`
+      )
+      const numeroContaOrigemEDestinoRecebidas = await Promise.all(
+        transferenciasRecebidasResponse.data.map(async (transferencia) => {
+          const contaOrigemResponse = await fetcher<Conta>(
+            `/contas/${transferencia.id_conta_origem}`
+          )
+          const contaOrigem = contaOrigemResponse.data
+          return {
+            ...transferencia,
+            numeroContaOrigem: contaOrigem.numeroConta,
+            numeroContaDestino: conta.numeroConta,
+          }
+        })
+      )
 
-      const response = await axios.post(`${API_URL}/transferencias`, {
-        id_conta_origem,
-        id_conta_destino: conta_destino.id,
-        valor,
-        data: new Date().toISOString(),
-      })
-      console.log(response.data)
-      return response.data // Retorne os dados da resposta
-    } catch (error) {
-      // Trate o erro da maneira que preferir
-      console.error("Erro ao realizar a transferência:", error)
-      throw error // Lança o erro para que possa ser tratado onde a função é chamada
-    }
-  }
+      const todasTransferencias = [
+        ...numeroContaOrigemEDestinoFeitas,
+        ...numeroContaOrigemEDestinoRecebidas,
+      ]
 
-  return { data: data?.data, isLoading, refetch, transaction }
+      // 4. Combinar transferências feitas e recebidas
+
+      // 5. Retornar a conta com todas as transferências
+      return {
+        ...conta,
+        transferencias: todasTransferencias,
+      }
+    },
+  })
 }
